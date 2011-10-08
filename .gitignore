@@ -1,0 +1,15 @@
+/.build/
+/_build/
+/blib/
+/Build
+/Build.bat
+Makefile
+/META.yml
+/MYMETA.yml
+/pm_to_blib
+PostScript-ScheduleGrid-XMLTV-*.tar.gz
+PostScript-ScheduleGrid-XMLTV-*/
+/test-results/
+*.c
+*.obj
+*.pdb
