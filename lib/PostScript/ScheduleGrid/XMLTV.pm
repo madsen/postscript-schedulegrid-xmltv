@@ -24,6 +24,7 @@ our $VERSION = '0.01';
 # This file is part of {{$dist}} {{$dist_version}} ({{$date}})
 
 use Moose::Util::TypeConstraints qw(duck_type);
+use MooseX::Types::DateTime (); # Just load coercions
 use MooseX::Types::Moose qw(ArrayRef CodeRef HashRef Int Str);
 
 use DateTime::Format::XMLTV;
@@ -35,6 +36,28 @@ use XMLTV 0.005 qw(best_name);
 use namespace::autoclean;
 
 #=====================================================================
+
+=attr-data start_date
+
+This is the date and time at which the listings will begin.  Required.
+
+=attr-data end_date
+
+This is the date and time at which the listings will end.  Required.
+
+=cut
+
+has start_date => (
+  is       => 'ro',
+  isa      => 'DateTime',
+  required => 1,
+);
+
+has end_date => (
+  is       => 'ro',
+  isa      => 'DateTime',
+  required => 1,
+);
 
 has channels => (
   is      => 'ro',
@@ -150,6 +173,8 @@ sub _program_cb
          qw(start stop)),
   );
 
+  return if $p{stop} < $self->start_date or $p{start} > $self->end_date;
+
   if (defined($id) and $id =~ m!\.(\d+)/(\d+)$!) {
     $p{part} = sprintf '(%d/%d)', $1+1, $2;
   } # end if multi-part episode
@@ -210,6 +235,8 @@ sub grid
   PostScript::ScheduleGrid->new(
     resource_title => 'Channel', # FIXME
     resources => [ sort { $a->{Number} <=> $b->{Number} } values %$channels ],
+    start_date => $self->start_date,
+    end_date   => $self->end_date,
     (@_ == 1) ? %{ $_[0] } : @_
   );
 } # end grid
