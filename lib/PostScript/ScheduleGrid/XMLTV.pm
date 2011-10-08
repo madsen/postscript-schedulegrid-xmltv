@@ -139,10 +139,12 @@ sub _channel_cb
   my ($num)   = defined($channel) && ($channel =~ /(\d+)/);
 
   my $add = $self->channel_settings->{$xml_id};
+  my $addName = $self->channel_settings->{$channel // ''};
 
   $self->channels->{$xml_id} = my $info = {
     name => $channel, Number => $num, lines => $self->lines_per_channel,
     schedule => [],
+    ($addName ? %$addName : ()),
     ($add ? %$add : ()),
   };
 
@@ -207,7 +209,7 @@ sub _callbacks
     sub { $channel->($self, @_) },
     sub { $program->($self, $program_callback, @_) },
   );
-} # end parsefiles
+} # end _callbacks
 
 #---------------------------------------------------------------------
 sub parsefiles
