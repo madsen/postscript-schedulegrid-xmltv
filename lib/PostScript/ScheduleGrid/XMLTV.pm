@@ -86,8 +86,9 @@ has languages => (
   is      => 'ro',
   isa     => ArrayRef[Str],
   default => sub {
-    if (($ENV{LANG} // '') =~ /^(\w+)/) { [ $1      ] }
-    else                                { [ 'en_US' ] }
+    if (($ENV{LANG} // '') =~ /^([[:alpha:]]{2}(?:_[[:alpha:]]{2})?)\b/) {
+      [ $1 ]
+    } else { [ 'en' ] }
   }, # end default languages
 );
 
