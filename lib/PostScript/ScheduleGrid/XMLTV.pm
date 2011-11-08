@@ -32,6 +32,7 @@ use Encode qw(find_encoding);
 use List::Util qw(min);
 use PostScript::ScheduleGrid;
 use XMLTV 0.005 qw(best_name);
+# RECOMMEND PREREQ: Lingua::Preferred 0 (XMLTV uses to choose best language)
 
 use namespace::autoclean;
 
