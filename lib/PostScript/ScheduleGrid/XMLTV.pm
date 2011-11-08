@@ -25,7 +25,7 @@ our $VERSION = '0.01';
 
 use Moose::Util::TypeConstraints qw(duck_type);
 use MooseX::Types::DateTime (); # Just load coercions
-use MooseX::Types::Moose qw(ArrayRef CodeRef HashRef Int Str);
+use MooseX::Types::Moose qw(ArrayRef Bool CodeRef HashRef Int Str);
 
 use DateTime::Format::XMLTV;
 use Encode qw(find_encoding);
@@ -37,11 +37,11 @@ use namespace::autoclean;
 
 #=====================================================================
 
-=attr-data start_date
+=attr start_date
 
 This is the date and time at which the listings will begin.  Required.
 
-=attr-data end_date
+=attr end_date
 
 This is the date and time at which the listings will end.  Required.
 
@@ -59,17 +59,65 @@ has end_date => (
   required => 1,
 );
 
+=attr channels
+
+This is a hashref containing the schedule data.  You don't normally
+deal directly with this; it's assembled from the XMLTV data.  For
+advanced tasks, you could manipulate this hash between parsing the
+listings and calling the C<grid> method.
+
+=cut
+
 has channels => (
   is      => 'ro',
   isa     => HashRef,
   default => sub { {} },
 );
 
+=attr channel_settings
+
+This is a hashref that allows you to override the default
+configuration for a channel.  The key is either the channel ID
+assigned by XMLTV (e.g. C<I10183.labs.zap2it.com>) or its default
+display name (e.g. S<C<285 EWTN>>).  The value is merged with the
+default channel settings when creating entries in the C<channels>
+hash.  Keys you might want to include are:
+
+=over
+
+=item name
+
+The channel name as it should appear in the grid.  By default, taken
+from the XMLTV C<display-name>.
+
+=item Number
+
+This controls the order in which channels appear in the grid.  They
+are sorted in ascending order by C<Number> (note the capitalization).
+Defaults to the first string of digits in the XMLTV C<display-name>.
+
+=item lines
+
+The number of lines that should be used for program listings.  Defaults
+to the C<lines_per_channel> attribute.
+
+=back
+
+=cut
+
 has channel_settings => (
   is      => 'ro',
-  isa     => HashRef,
+  isa     => HashRef[HashRef],
   default => sub { {} },
 );
+
+=attr lines_per_channel
+
+The number of lines that should be used for program listings
+(default 2).  Can be overriden on a per-channel basis through the
+C<channel_settings> attribute.
+
+=cut
 
 has lines_per_channel => (
   is      => 'ro',
@@ -77,10 +125,81 @@ has lines_per_channel => (
   default => 2,
 );
 
+=attr program_callback
+
+An optional CodeRef that will be called for each program occurrence.
+It receives a single hashref containing data about this occurrence,
+and can modify that hashref to alter the way the program will appear
+in the grid.  The keys are:
+
+=over
+
+=item show **
+
+The title of the program.
+
+=item episode **
+
+The title of the episode.  Will be appended to C<show> following a
+colon.
+
+=item part **
+
+If this is a multi-part episode, a string like C<(1/2)>, otherwise
+C<undef>.  This will be appended to C<show> preceded by a space (after
+appending C<episode>, if any).
+
+=item category **
+
+The category name for PostScript::ScheduleGrid.
+
+=item start **
+
+The time at which the program begins.
+
+=item stop **
+
+The time at which the program is over.
+
+=item channel
+
+A reference to the entry in C<channels> for the channel the program is
+appearing on.
+
+=item dd_progid
+
+For US listings from Schedules Direct, the C<dd_progid> identifying
+the episode.
+
+=item xml
+
+The raw XMLTV data structure containing the information about this
+program occurrence.
+
+=item parser
+
+The PostScript::ScheduleGrid::XMLTV object that is parsing the data.
+
+=back
+
+The keys identified with ** may be modified by the callback.  (Note: while
+you I<can> modify the start & stop times, you probably shouldn't.)
+
+=cut
+
 has program_callback => (
   is      => 'ro',
   isa     => CodeRef,
 );
+
+=attr languages
+
+This is an arrayref of language codes identifying your prefered
+languages (as used by XMLTV's C<best_name> function).  By default,
+it's taken from C<$ENV{LANG}>, or C<en> if that doesn't begin with a
+language code.
+
+=cut
 
 has languages => (
   is      => 'ro',
@@ -104,14 +223,38 @@ sub _encoding_cb
   $self->_encoding(find_encoding($name) or die "Unknown encoding $name");
 }
 
+=method decode
+
+  $decoded_text = $tv->decode($text);
+
+This method decodes C<$text> using the encoding specified by XMLTV.
+May be used by C<program_callback>.
+
+=cut
+
 sub decode
 {
   # decode leaves undef unchanged
   shift->_encoding->decode(shift, Encode::FB_CROAK);
 } # end decode
-
 #---------------------------------------------------------------------
-sub getText
+
+=method get_text
+
+  $decoded_text = $tv->get_text(\@choices, [$specific]);
+
+This method picks the best available language from the pairs in
+C<@choices> using XMLTV's C<best_name> function and returns that
+string after decoding it.  It gets the list of languages to look for
+from the C<languages> attribute.
+
+If the optional parameter C<$specific> is defined, then only an exact
+match to that language will be returned.  It will return C<undef> if
+an exact match is not found.
+
+=cut
+
+sub get_text
 {
   my ($self, $choices, $specific) = @_;
 
@@ -127,7 +270,7 @@ sub getText
   }
 
   return undef;
-} # end getText
+} # end get_text
 
 #---------------------------------------------------------------------
 sub _channel_cb
@@ -147,6 +290,7 @@ sub _channel_cb
     schedule => [],
     ($addName ? %$addName : ()),
     ($add ? %$add : ()),
+    Id => $xml_id,
   };
 
   confess "Channel id $xml_id has no name"   unless defined $info->{name};
@@ -161,14 +305,15 @@ sub _program_cb
   my $chID    = $self->decode($p->{channel});
   my $channel = $self->channels->{$chID};
 
-  my $id = $self->getText($p->{'episode-num'}, 'dd_progid');
+  my $id = $self->get_text($p->{'episode-num'}, 'dd_progid');
 
   confess "Unknown channel $chID for episode $id" unless defined $channel;
 
   my %p = (
+    channel   => $channel,
     dd_progid => $id,
-    show      => $self->getText($p->{title}),
-    episode   => $self->getText($p->{'sub-title'}),
+    show      => $self->get_text($p->{title}),
+    episode   => $self->get_text($p->{'sub-title'}),
     category  => '',
     xml       => $p,
     parser    => $self,
@@ -211,27 +356,73 @@ sub _callbacks
     sub { $program->($self, $program_callback, @_) },
   );
 } # end _callbacks
-
 #---------------------------------------------------------------------
+
+=method parsefiles
+
+  $tv->parsefiles($filename, ...);
+
+This method parses one or more XMLTV data files, adding the program
+listings to the schedule.  It returns the C<$tv> object, so you can
+chain method calls.
+
+=cut
+
 sub parsefiles
 {
   my $self = shift;
 
-  &XMLTV::parsefiles_callback($self->_callbacks, @_);
-} # end parsefiles
+  &XMLTV::parsefiles_callback($self->_callbacks, @_); # stupid prototype
 
+  return $self;
+} # end parsefiles
 #---------------------------------------------------------------------
+
+=method parse
+
+  $tv->parse($xmltv_document);
+
+This method parses XMLTV data contained in a string, adding the program
+listings to the schedule.  It returns the C<$tv> object, so you can
+chain method calls.
+
+=cut
+
 sub parse
 {
   my $self = shift;
 
-  &XMLTV::parse_callback(shift, $self->_callbacks);
-} # end parse
+  &XMLTV::parse_callback(shift, $self->_callbacks);# stupid prototype
 
+  return $self;
+} # end parse
 #---------------------------------------------------------------------
+
+=method grid
+
+  $grid = $tv->grid(...);
+
+This method constructs and returns a PostScript::ScheduleGrid object
+using the supplied parameters and the current listings data.  It may
+only be called once.
+
+You may pass any parameters that are accepted by the
+PostScript::ScheduleGrid constructor, either in a single hashref, or
+as a list of S<C<< key => value >>> pairs.
+
+=cut
+
+has _grid_built => (
+  is      => 'rw',
+  isa     => Bool,
+);
+
 sub grid
 {
   my $self = shift;
+
+  confess "You can only call 'grid' once" if $self->_grid_built;
+  $self->_grid_built(1);
 
   my $channels = $self->channels;
 
@@ -244,10 +435,10 @@ sub grid
   );
 } # end grid
 
-
 #=====================================================================
 # Package Return Value:
 
+__PACKAGE__->meta->make_immutable;
 1;
 
 __END__
