@@ -5,6 +5,7 @@ META.json
 META.yml
 Makefile.PL
 README
+examples/example.pl
 lib/PostScript/ScheduleGrid/XMLTV.pm
 t/00.load.t
 t/release-pod-coverage.t

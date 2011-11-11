@@ -6,6 +6,7 @@
 \.o$
 \.obj$
 \.pdb$
+\.ps$
 \.tmp$
 ^\#
 ^MANIFEST\.
@@ -22,3 +23,4 @@
 ^Build.bat$
 ^dist\.ini$
 ^tools/loom\.pl
+data\.xml

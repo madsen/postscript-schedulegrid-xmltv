@@ -4,6 +4,7 @@
 /Build
 /Build.bat
 Makefile
+data.xml
 /META.yml
 /MYMETA.yml
 /pm_to_blib
@@ -13,3 +14,4 @@ PostScript-ScheduleGrid-XMLTV-*/
 *.c
 *.obj
 *.pdb
+*.ps
