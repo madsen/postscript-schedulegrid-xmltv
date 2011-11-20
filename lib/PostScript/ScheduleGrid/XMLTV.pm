@@ -20,7 +20,7 @@ package PostScript::ScheduleGrid::XMLTV;
 use 5.010;
 use Moose;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 # This file is part of {{$dist}} {{$dist_version}} ({{$date}})
 
 use Moose::Util::TypeConstraints qw(duck_type);
@@ -446,4 +446,35 @@ __END__
 
 =head1 SYNOPSIS
 
-  use PostScript::ScheduleGrid::XMLTV;
+  use DateTime ();
+  use PostScript::ScheduleGrid::XMLTV ();
+
+  my $start_date = DateTime->today(time_zone => 'local');
+  my $end_date   = $start_date->clone->add(days => 3);
+
+  my $tv = PostScript::ScheduleGrid::XMLTV->new(
+    start_date => $start_date,  end_date => $end_date,
+  );
+
+  my $grid = $tv->parsefiles('your_xmltv_datafile.xml')->grid;
+
+  $grid->output('listings.ps');
+
+See F<examples/example.pl> for a more realistic example.
+
+=head1 DESCRIPTION
+
+PostScript::ScheduleGrid::XMLTV interfaces L<PostScript::ScheduleGrid>
+with L<XMLTV> to create printable TV listings.  It is I<not> a
+subclass of either module; instead, it creates a
+PostScript::ScheduleGrid object on demand.
+
+It does not handle downloading the TV listings from their source.  You
+should use one of the XMLTV grabbers to download listings and produce
+an XMLTV data file.
+
+Then, you create a PostScript::ScheduleGrid::XMLTV object, call its
+C<parsefiles> and/or C<parse> methods to import the XMLTV data, and
+then call its C<grid> method to get a PostScript::ScheduleGrid object.
+You can then call the grid's C<output> method to save your printable
+listings in a file.
