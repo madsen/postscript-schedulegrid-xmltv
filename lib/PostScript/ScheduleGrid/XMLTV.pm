@@ -20,7 +20,7 @@ package PostScript::ScheduleGrid::XMLTV;
 use 5.010;
 use Moose;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 # This file is part of {{$dist}} {{$dist_version}} ({{$date}})
 
 use Moose::Util::TypeConstraints qw(duck_type);
@@ -35,6 +35,25 @@ use XMLTV 0.005 qw(best_name);
 # RECOMMEND PREREQ: Lingua::Preferred 0 (XMLTV uses to choose best language)
 
 use namespace::autoclean;
+
+=head1 DEPENDENCIES
+
+PostScript::ScheduleGrid::XMLTV requires
+{{$t->dependency_link('PostScript::ScheduleGrid')}},
+{{$t->dependency_link('DateTime::Format::XMLTV')}},
+{{$t->dependency_link('Moose')}},
+L<MooseX::Types>,
+{{$t->dependency_link('MooseX::Types::DateTime')}},
+and
+{{$t->dependency_link('namespace::autoclean')}}.
+
+You also need {{$t->dependency_link('XMLTV')}}, which is not currently
+available from CPAN.  You can get it at L<http://xmltv.org>.
+
+You may also want to install L<Lingua::Preferred>, which XMLTV uses to
+handle language selection.
+
+=cut
 
 #=====================================================================
 
@@ -80,9 +99,12 @@ has channels => (
 This is a hashref that allows you to override the default
 configuration for a channel.  The key is either the channel ID
 assigned by XMLTV (e.g. C<I10183.labs.zap2it.com>) or its default
-display name (e.g. S<C<285 EWTN>>).  The value is merged with the
-default channel settings when creating entries in the C<channels>
-hash.  Keys you might want to include are:
+display name (e.g. S<C<285 EWTN>>).  (If both keys are present, both
+are used, but the channel ID takes precedence over the display name.)
+The value is merged with the default channel settings when creating
+entries in the C<channels> hash.
+
+Keys you might want to include are:
 
 =over
 
@@ -477,4 +499,5 @@ Then, you create a PostScript::ScheduleGrid::XMLTV object, call its
 C<parsefiles> and/or C<parse> methods to import the XMLTV data, and
 then call its C<grid> method to get a PostScript::ScheduleGrid object.
 You can then call the grid's C<output> method to save your printable
-listings in a file.
+listings in a PostScript file, or pass the grid to
+L<PostScript::Convert/psconvert> to generate a PDF or bitmap image.
