@@ -20,7 +20,7 @@ package PostScript::ScheduleGrid::XMLTV;
 use 5.010;
 use Moose;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 # This file is part of {{$dist}} {{$dist_version}} ({{$date}})
 
 use Moose::Util::TypeConstraints qw(duck_type);
